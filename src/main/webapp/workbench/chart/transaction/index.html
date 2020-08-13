@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <!-- 引入 ECharts 文件 -->
+    <script type="text/javascript" src="/jquery/echarts.min.js"></script>
+    <script type="text/javascript" src="/jquery/jquery-1.11.1-min.js"></script>
+    <style type="text/css">
+        *{
+            margin: 0;
+            padding: 0;
+        }
+        .main{
+            width: 100%;
+            height: 100%;
+            position: absolute;
+        }
+        .quarter-div{
+            width: 50%;
+            height: 50%;
+            float: left;
+        }
+    </style>
+</head>
+<body>
+<script type="text/javascript">
+
+    $.ajax({
+        url:'/echarts/tranMoney',
+        type:'get',
+        dataType:'json',
+        success:function (obj) {
+            if (obj.success){
+                var myChart = echarts.init(document.getElementById('one'));
+                option = {
+                    xAxis: {
+                        type: 'category',
+                        data: obj.data.name
+                    },
+                    yAxis: {
+                        type: 'value'
+                    },
+                    series: [{
+                        data: obj.data.money,
+                        type: 'line'
+                    }]
+                };
+
+                myChart.setOption(option);
+            }
+        }
+    });
+
+    $.ajax({
+        url:'/echarts/tranMoney',
+        type:'get',
+        dataType:'json',
+        success:function (obj) {
+            if (obj.success){
+                var myChart2 = echarts.init(document.getElementById('two'));
+                option2 = {
+                    xAxis: {
+                        type: 'category',
+                        data: obj.data.name
+                    },
+                    yAxis: {
+                        type: 'value'
+                    },
+                    series: [{
+                        data: obj.data.money,
+                        type: 'bar',
+                        showBackground: true,
+                        backgroundStyle: {
+                            color: 'rgba(220, 220, 220, 0.8)'
+                        }
+                    }]
+                };
+
+
+                myChart2.setOption(option2);
+            }
+        }
+    });
+
+    $.ajax({
+        url:'/echarts/tranMoneyOth',
+        type:'get',
+        dataType:'json',
+        success:function (obj) {
+            if (obj.success){
+                var myChart3 = echarts.init(document.getElementById('three'));
+                option3 = {
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: '{a} <br/>{b}: {c} ({d}%)'
+                    },
+                    legend: {
+                        orient: 'vertical',
+                        left: 10,
+                        data: obj.data.name
+                    },
+                    series: [
+                        {
+                            name: '访问来源',
+                            type: 'pie',
+                            radius: ['50%', '70%'],
+                            avoidLabelOverlap: false,
+                            label: {
+                                show: false,
+                                position: 'center'
+                            },
+                            emphasis: {
+                                label: {
+                                    show: true,
+                                    fontSize: '30',
+                                    fontWeight: 'bold'
+                                }
+                            },
+                            labelLine: {
+                                show: false
+                            },
+                            data: obj.data.maps
+                        }
+                    ]
+                };
+                myChart3.setOption(option3);
+            }
+        }
+    });
+
+    $.ajax({
+        url:'/echarts/tranMoneyOth',
+        type:'get',
+        dataType:'json',
+        success:function (obj) {
+            if (obj.success){
+                var myChart4 = echarts.init(document.getElementById('four'));
+                option4 = {
+                    title: {
+
+                    },
+                    tooltip: {
+                        trigger: 'item',
+                        formatter: "{a} <br/>{b} : {c}%"
+                    },
+                    toolbox: {
+                        feature: {
+                            dataView: {readOnly: false},
+                            restore: {},
+                            saveAsImage: {}
+                        }
+                    },
+                    legend: {
+                        data: obj.data.name
+                    },
+
+                    series: [
+                        {
+                            name:'漏斗图',
+                            type:'funnel',
+                            left: '10%',
+                            top: 60,
+                            //x2: 80,
+                            bottom: 60,
+                            width: '80%',
+                            // height: {totalHeight} - y - y2,
+                            min: 0,
+                            max: obj.data.name.length,
+                            minSize: '0%',
+                            maxSize: '100%',
+                            sort: 'descending',
+                            gap: 2,
+                            label: {
+                                show: true,
+                                position: 'inside'
+                            },
+                            labelLine: {
+                                length: 10,
+                                lineStyle: {
+                                    width: 1,
+                                    type: 'solid'
+                                }
+                            },
+                            itemStyle: {
+                                borderColor: '#fff',
+                                borderWidth: 1
+                            },
+                            emphasis: {
+                                label: {
+                                    fontSize: 20
+                                }
+                            },
+                            data: obj.data.maps
+                        }
+                    ]
+                };
+
+                myChart4.setOption(option4);
+            }
+        }
+    });
+
+
+</script>
+
+
+<div class="main">
+
+    <div id="one" class="quarter-div "></div>
+    <div id="two" class="quarter-div "></div>
+
+
+    <div id="three" class="quarter-div "></div>
+    <div id="four" class="quarter-div "></div>
+</div>
+</body>
+</html>

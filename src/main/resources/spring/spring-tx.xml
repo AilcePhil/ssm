@@ -1,0 +1,55 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xmlns:context="http://www.springframework.org/schema/context"
+       xmlns:aop="http://www.springframework.org/schema/aop"
+       xmlns:tx="http://www.springframework.org/schema/tx"
+       xsi:schemaLocation="
+        http://www.springframework.org/schema/beans
+        http://www.springframework.org/schema/beans/spring-beans.xsd
+        http://www.springframework.org/schema/context
+        http://www.springframework.org/schema/context/spring-context.xsd
+        http://www.springframework.org/schema/aop
+        http://www.springframework.org/schema/aop/spring-aop.xsd
+        http://www.springframework.org/schema/tx
+        http://www.springframework.org/schema/tx/spring-tx.xsd">
+
+        <!--扫描指定路径下的包-->
+        <context:component-scan base-package="com.powernode.settings.*"/>
+        <context:component-scan base-package="com.powernode.workbench.*"/>
+
+    <!--开启AOP切面类注解-->
+        <aop:aspectj-autoproxy/>
+        <!--加载properties文件-->
+        <context:property-placeholder location="classpath:properties/*.properties"/>
+
+        <!--配置链接池-->
+        <bean id="dataSource" class="com.alibaba.druid.pool.DruidDataSource">
+            <property name="driverClassName" value="${mysql.driver}"/>
+            <property name="url" value="${mysql.url}"/>
+            <property name="username" value="${mysql.username}"/>
+            <property name="password" value="${mysql.password}"/>
+        </bean>
+
+        <!--SqlSessionFactoryBean配置sql工厂-->
+        <bean id="sqlSessionFactoryBean" class="org.mybatis.spring.SqlSessionFactoryBean">
+            <property name="dataSource" ref="dataSource"/>
+            <!--加载mybatis文件-->
+            <property name="configLocation" value="classpath:mybatis/mybatis.xml"/>
+            <!--加载mapper文件-->
+            <property name="mapperLocations" value="classpath:mapper/*.xml"/>
+        </bean>
+
+        <!--扫描mapper文件-->
+        <bean class="org.mybatis.spring.mapper.MapperScannerConfigurer">
+            <property name="basePackage" value="com.powernode.*.mapper"/>
+        </bean>
+
+        <!--事务管理器-->
+        <bean id="transactionManager" class="org.springframework.jdbc.datasource.DataSourceTransactionManager">
+            <property name="dataSource" ref="dataSource"/>
+        </bean>
+
+        <!--事务注解驱动-->
+        <tx:annotation-driven transaction-manager="transactionManager"/>
+</beans>

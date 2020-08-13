@@ -1,0 +1,412 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<link href="/jquery/bootstrap_3.3.0/css/bootstrap.min.css" type="text/css" rel="stylesheet" />
+<link href="/jquery/bootstrap-datetimepicker-master/css/bootstrap-datetimepicker.min.css" type="text/css" rel="stylesheet" />
+
+<script type="text/javascript" src="/jquery/jquery-1.11.1-min.js"></script>
+<script type="text/javascript" src="/jquery/bootstrap_3.3.0/js/bootstrap.min.js"></script>
+<script type="text/javascript" src="/jquery/bootstrap-datetimepicker-master/js/bootstrap-datetimepicker.js"></script>
+<script type="text/javascript" src="/jquery/bootstrap-datetimepicker-master/locale/bootstrap-datetimepicker.zh-CN.js"></script>
+
+<link type="text/css" href="/jquery/bs_pagination/jquery.bs_pagination.min.css" rel="stylesheet"/>
+<script type="text/javascript" src="/jquery/bs_pagination/jquery.bs_pagination.min.js"></script>
+<script type="text/javascript" src="/jquery/bs_pagination/en.js"></script>
+<script type="text/javascript">
+
+	$(function(){
+		getAllOptions();
+
+
+		//模糊搜索
+		$("#search").click(function () {
+			$("#searchOwnerHid").val($("#searchOwner").val());
+			$("#searchNameHid").val($("#searchName").val());
+			$("#searchCustomerIdHid").val($("#searchCustomerId").val());
+			$("#searchStageHid").val($("#searchStage option:selected").val());
+			$("#searchTypeHid").val($("#searchType").val());
+			$("#searchSourceHid").val($("#searchSource option:selected").val());
+			$("#searchContactsIdHid").val($("#searchContactsId").val());
+			pageGetAllTran(3, 1);
+		});
+
+		//跳转到创建交易页面
+		$("#addTrain").click(function () {
+			window.location.href='save.html';
+		});
+
+		//跳转到修改页面
+		$("#editTran").click(function () {
+			var checkSize = $("input[name='checkOne']:checked").size();
+			if (checkSize == 0){
+				alert("请选择一条需要修改的数据");
+			} else if(checkSize > 1){
+				alert("选择的数据过多")
+			}else {
+				var id = $("input[name='checkOne']:checked").val();
+				window.location.href='edit.html?tranId='+id+'';
+			}
+
+		});
+
+		//复选框全选判定
+		$("#checkAll").click(function () {
+			$("input[name='checkOne']").prop('checked',this.checked);
+		});
+
+		$("#contentBody").on('click',function () {
+			$("#checkAll").prop("checked",$("input[name='checkOne']").length == $("input[name='checkOne']:checked").length)
+		});
+
+
+		//批量删除
+		$("#deleteTran").click(function () {
+			var $checks = $("input[name='checkOne']:checked");
+			var ids = new Array();
+			$.each($checks,function () {
+				ids.push($(this).val());
+			});
+
+			$.ajax({
+				url:'/tran/del',
+				type:'get',
+				data:{ids:ids},
+				dataType:'json',
+				traditional:true,
+				success:function (obj) {
+					if (obj.success){
+						var $checks = $("input[name='checkOne']:checked");
+
+						$.each($checks,function () {
+							$("#"+$(this).val()).remove();
+						});
+
+						$("#checkAll").prop("checked",false);
+						//pageList($("#autoPage").bs_pagination('getOption','rowsPerPage'), 1);
+					}else{
+						alert(obj.msg);
+					}
+				}
+			});
+		});
+
+
+
+
+		pageGetAllTran(3, 1);
+	});
+	//获取所有交易信息
+	function pageGetAllTran(pageSize, pageNum){
+		var owner = $("#searchOwner").val($("#searchOwnerHid").val());
+		var name = $("#searchName").val($("#searchNameHid").val());
+		var customerId = $("#searchCustomerId").val($("#searchCustomerIdHid").val());
+		var stage = $("#searchStage option:selected").val($("#searchStageHid").val());
+		var type = $("#searchType").val($("#searchTypeHid").val());
+		var source = $("#searchSource option:selected").val($("#searchSourceHid").val());
+		var contactsId = $("#searchContactsId").val($("#searchContactsIdHid").val());
+
+		$.ajax({
+			url:'/tran/trans',
+			type:'get',
+			dataType:'json',
+			data:{
+				pageNum:pageNum,
+				pageSize:pageSize,
+				owner:owner.val(),
+				name:name.val(),
+				customerId:customerId.val(),
+				stage:stage.val(),
+				type:type.val(),
+				source:source.val(),
+				contactsId:contactsId.val()
+			},
+			success:function (obj) {
+				if (obj.success){
+					if (obj.data.rows != null){
+						var items = obj.data.rows;
+						var html = '';
+						for (var i=0; i<items.length; i++){
+							html += '<tr id="'+items[i].id+'">';
+							html += '<td><input value="'+items[i].id+'" name="checkOne" type="checkbox" /></td>';
+							html += '<td><a style="text-decoration: none; cursor: pointer;" onclick="window.location.href=\'detail.html?id='+items[i].id+'\'">'+items[i].name+'</a></td>';
+							html += '<td>'+items[i].customerid+'</td>';
+							html += '<td>'+items[i].stage+'</td>';
+							html += '<td>'+items[i].type+'</td>';
+							html += '<td>'+items[i].owner+'</td>';
+							html += '<td>'+items[i].source+'</td>';
+							html += '<td>'+items[i].contactsid+'</td>';
+							html += '</tr>';
+						}
+						$("#contentBody").html(html);
+
+						var total = obj.data.total;
+						var totalPage = total%pageSize == 0 ? total/pageSize : parseInt(total/pageSize) + 1;
+
+						$("#autoPage").bs_pagination({
+							currentPage:pageNum,//页码
+							rowsPerPage:pageSize,//每页显示的记录条数
+							maxRowsPerPage:20,//每页最多显示的记录条数
+							totalPages:totalPage,//总页数
+							totalRows:total,//总记录条数
+							visiblePageLinks:3,//显示几个卡片
+							showGoToPage:true,
+							showRowsPerPage:true,
+							showRowsInfo:true,
+							showRowsDefaultInfo:true,
+							onChangePage : function (even, obj) {
+								pageGetAllTran(obj.rowsPerPage,obj.currentPage);
+							}
+						});
+					}
+				}else {
+					alert(obj.msg);
+				}
+			}
+		});
+	}
+
+	//加载所有搜索部分的下拉选
+	function getAllOptions() {
+		$.ajax({
+			url:'/tran/options',
+			type:'get',
+			dataType:'json',
+			success:function (obj) {
+				if(obj.success){
+					var stage = obj.data.stage;
+					var type = obj.data.transactionType;
+					var source = obj.data.source;
+
+					var html = "";
+					html +='<option></option>';
+					for (var i=0; i<stage.length; i++){
+						html += '<option id="' + stage[i].value + '">' + stage[i].text + '</option>';
+					}
+					$("#searchStage").html(html);
+
+					var html = "";
+					html +='<option></option>';
+					for (var i=0; i<type.length; i++){
+						html += '<option id="' + type[i].value + '">' + type[i].text + '</option>';
+					}
+					$("#searchType").html(html);
+
+					var html = "";
+					html +='<option></option>';
+					for (var i=0; i<source.length; i++){
+						html += '<option id="' + source[i].value + '">' + source[i].text + '</option>';
+					}
+					$("#searchSource").html(html);
+				}else {
+					alert(obj.msg);
+				}
+			}
+
+
+		});
+	}
+	
+</script>
+</head>
+<body>
+
+	
+	
+	<div>
+		<div style="position: relative; left: 10px; top: -10px;">
+			<div class="page-header">
+				<h3>交易列表</h3>
+			</div>
+		</div>
+	</div>
+	
+	<div style="position: relative; top: -20px; left: 0px; width: 100%; height: 100%;">
+	
+		<div style="width: 100%; position: absolute;top: 5px; left: 10px;">
+		
+			<div class="btn-toolbar" role="toolbar" style="height: 80px;">
+				<form class="form-inline" role="form" style="position: relative;top: 8%; left: 5px;">
+				  	<input id="searchOwnerHid" type="hidden"/>
+					<input id="searchNameHid" type="hidden"/>
+					<input id="searchCustomerIdHid" type="hidden"/>
+					<input id="searchStageHid" type="hidden"/>
+					<input id="searchTypeHid" type="hidden"/>
+					<input id="searchSourceHid" type="hidden"/>
+					<input id="searchContactsIdHid" type="hidden"/>
+
+				  <div class="form-group">
+				    <div class="input-group">
+				      <div class="input-group-addon">所有者</div>
+				      <input id="searchOwner" class="form-control" type="text">
+				    </div>
+				  </div>
+				  
+				  <div class="form-group">
+				    <div class="input-group">
+				      <div class="input-group-addon">名称</div>
+				      <input id="searchName" class="form-control" type="text">
+				    </div>
+				  </div>
+				  
+				  <div class="form-group">
+				    <div class="input-group">
+				      <div class="input-group-addon">客户名称</div>
+				      <input id="searchCustomerId" class="form-control" type="text">
+				    </div>
+				  </div>
+				  
+				  <br>
+				  
+				  <div class="form-group">
+				    <div class="input-group">
+				      <div class="input-group-addon">阶段</div>
+					  <select id="searchStage" class="form-control">
+					  	<!--<option></option>
+					  	<option>资质审查</option>
+					  	<option>需求分析</option>
+					  	<option>价值建议</option>
+					  	<option>确定决策者</option>
+					  	<option>提案/报价</option>
+					  	<option>谈判/复审</option>
+					  	<option>成交</option>
+					  	<option>丢失的线索</option>
+					  	<option>因竞争丢失关闭</option>-->
+					  </select>
+				    </div>
+				  </div>
+				  
+				  <div class="form-group">
+				    <div class="input-group">
+				      <div class="input-group-addon">类型</div>
+					  <select id="searchType" class="form-control">
+					  	<!--<option></option>
+					  	<option>已有业务</option>
+					  	<option>新业务</option>-->
+					  </select>
+				    </div>
+				  </div>
+				  
+				  <div class="form-group">
+				    <div class="input-group">
+				      <div class="input-group-addon">来源</div>
+				      <select  class="form-control" id="searchSource">
+						  <!--<option></option>
+						  <option>广告</option>
+						  <option>推销电话</option>
+						  <option>员工介绍</option>
+						  <option>外部介绍</option>
+						  <option>在线商场</option>
+						  <option>合作伙伴</option>
+						  <option>公开媒介</option>
+						  <option>销售邮件</option>
+						  <option>合作伙伴研讨会</option>
+						  <option>内部研讨会</option>
+						  <option>交易会</option>
+						  <option>web下载</option>
+						  <option>web调研</option>
+						  <option>聊天</option>-->
+						</select>
+				    </div>
+				  </div>
+				  
+				  <div class="form-group">
+				    <div class="input-group">
+				      <div class="input-group-addon">联系人名称</div>
+				      <input id="searchContactsId" class="form-control" type="text">
+				    </div>
+				  </div>
+				  
+				  <button id="search" type="button" class="btn btn-default">查询</button>
+				  
+				</form>
+			</div>
+			<div class="btn-toolbar" role="toolbar" style="background-color: #F7F7F7; height: 50px; position: relative;top: 10px;">
+				<div class="btn-group" style="position: relative; top: 18%;">
+				  <button id="addTrain" type="button" class="btn btn-primary"><span class="glyphicon glyphicon-plus"></span> 创建</button>
+				  <button id="editTran" type="button" class="btn btn-default"><span class="glyphicon glyphicon-pencil"></span> 修改</button>
+				  <button id="deleteTran" type="button" class="btn btn-danger"><span class="glyphicon glyphicon-minus"></span> 删除</button>
+				</div>
+				
+				
+			</div>
+			<div style="position: relative;top: 10px;">
+				<table class="table table-hover">
+					<thead>
+						<tr style="color: #B3B3B3;">
+							<td><input id="checkAll" type="checkbox" /></td>
+							<td>名称</td>
+							<td>客户名称</td>
+							<td>阶段</td>
+							<td>类型</td>
+							<td>所有者</td>
+							<td>来源</td>
+							<td>联系人名称</td>
+						</tr>
+					</thead>
+					<tbody id="contentBody">
+						<!--<tr>
+							<td><input type="checkbox" /></td>
+							<td><a style="text-decoration: none; cursor: pointer;" onclick="window.location.href='detail.html';">动力节点-交易01</a></td>
+							<td>动力节点</td>
+							<td>谈判/复审</td>
+							<td>新业务</td>
+							<td>zhangsan</td>
+							<td>广告</td>
+							<td>李四</td>
+						</tr>
+                        <tr class="active">
+                            <td><input type="checkbox" /></td>
+                            <td><a style="text-decoration: none; cursor: pointer;" onclick="window.location.href='detail.html';">动力节点-交易01</a></td>
+                            <td>动力节点</td>
+                            <td>谈判/复审</td>
+                            <td>新业务</td>
+                            <td>zhangsan</td>
+                            <td>广告</td>
+                            <td>李四</td>
+                        </tr>-->
+					</tbody>
+				</table>
+			</div>
+			
+			<div id="autoPage" style="height: 50px; position: relative;top: 20px;">
+				<div>
+					<button type="button" class="btn btn-default" style="cursor: default;">共<b>50</b>条记录</button>
+				</div>
+				<div class="btn-group" style="position: relative;top: -34px; left: 110px;">
+					<button type="button" class="btn btn-default" style="cursor: default;">显示</button>
+					<div class="btn-group">
+						<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+							10
+							<span class="caret"></span>
+						</button>
+						<ul class="dropdown-menu" role="menu">
+							<li><a href="#">20</a></li>
+							<li><a href="#">30</a></li>
+						</ul>
+					</div>
+					<button type="button" class="btn btn-default" style="cursor: default;">条/页</button>
+				</div>
+				<div style="position: relative;top: -88px; left: 285px;">
+					<nav>
+						<ul class="pagination">
+							<li class="disabled"><a href="#">首页</a></li>
+							<li class="disabled"><a href="#">上一页</a></li>
+							<li class="active"><a href="#">1</a></li>
+							<li><a href="#">2</a></li>
+							<li><a href="#">3</a></li>
+							<li><a href="#">4</a></li>
+							<li><a href="#">5</a></li>
+							<li><a href="#">下一页</a></li>
+							<li class="disabled"><a href="#">末页</a></li>
+						</ul>
+					</nav>
+				</div>
+			</div>
+			
+		</div>
+		
+	</div>
+</body>
+</html>

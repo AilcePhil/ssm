@@ -1,0 +1,973 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<link href="/jquery/bootstrap_3.3.0/css/bootstrap.min.css" type="text/css" rel="stylesheet" />
+<script type="text/javascript" src="/jquery/jquery-1.11.1-min.js"></script>
+<script type="text/javascript" src="/jquery/bootstrap_3.3.0/js/bootstrap.min.js"></script>
+<link type="text/css" href="/jquery/bs_pagination/jquery.bs_pagination.min.css" rel="stylesheet"/>
+
+<link href="/jquery/bootstrap-datetimepicker-master/css/bootstrap-datetimepicker.min.css" type="text/css" rel="stylesheet" />
+<script type="text/javascript" src="/jquery/bootstrap-datetimepicker-master/js/bootstrap-datetimepicker.js"></script>
+<script type="text/javascript" src="/jquery/bootstrap-datetimepicker-master/locale/bootstrap-datetimepicker.zh-CN.js"></script>
+
+<script type="text/javascript" src="/jquery/bs_pagination/jquery.bs_pagination.min.js"></script>
+<script type="text/javascript" src="/jquery/bs_pagination/en.js"></script>
+
+<script type="text/javascript">
+
+
+
+	//默认情况下取消和保存按钮是隐藏的
+	var cancelAndSaveBtnDefault = true;
+	var address = window.location.search;
+	var clueid = decodeURI(address.substring(address.indexOf("=") + 1));
+	
+	$(function(){
+		//时间组件
+		$(".time").datetimepicker({
+			minView:"month",
+			language:"zh-CN",
+			format:"yyyy-mm-dd",
+			autoclose:true,//时间自动关闭
+			todayBtn:true,//选择时间
+			pickerPosition:"top-left"//位置
+		});
+
+		$("#remark").focus(function(){
+			if(cancelAndSaveBtnDefault){
+				//设置remarkDiv的高度为130px
+				$("#remarkDiv").css("height","130px");
+				//显示
+				$("#cancelAndSaveBtn").show("2000");
+				cancelAndSaveBtnDefault = false;
+			}
+		});
+		
+		$("#cancelBtn").click(function(){
+			//显示
+			$("#cancelAndSaveBtn").hide();
+			//设置remarkDiv的高度为130px
+			$("#remarkDiv").css("height","90px");
+			cancelAndSaveBtnDefault = true;
+			$("#remark").val("");
+		});
+
+		$("#allRemarks").on("mouseover",".remarkDiv",function () {
+			$(this).children("div").children("div").show();
+		});
+
+		$("#allRemarks").on("mouseout",".remarkDiv",function () {
+			$(this).children("div").children("div").hide();
+		});
+
+		$("#allRemarks").on("mouseover",".myDelHref",function () {
+			$(this).children("span").css("color","#ff0000");
+		});
+
+		$("#allRemarks").on("mouseout",".myDelHref",function () {
+			$(this).children("span").css("color","#E6E6E6");
+		});
+
+		$("#allRemarks").on("mouseover",".myEditHref",function () {
+			$(this).children("span").css("color","#00ff00");
+		});
+
+		$("#allRemarks").on("mouseout",".myEditHref",function () {
+			$(this).children("span").css("color","#E6E6E6");
+		});
+
+
+		getDetailById();
+
+		getAllRemark();
+
+		//删除
+		$("#deleteClue").click(function () {
+			var ids = new Array();
+			ids.push(clueid);
+			$.ajax({
+				url:'/clue/del',
+				type:'get',
+				data:{ids:ids},
+				dataType:'json',
+				traditional:true,
+				success:function (obj) {
+					if (obj.success){
+						window.location.href="/workbench/clue/index.html";
+					}else{
+						alert(obj.msg);
+					}
+				}
+			});
+		});
+
+		//修改
+		$("#updateClue").click(function () {
+				$("#editClueModal").modal("show");
+				$.ajax({
+					url:'/clue/id',
+					type:'get',
+					data:{id:clueid},
+					dataType:'json',
+					success:function (obj) {
+						if (obj.success){
+							var clue = obj.data.tblClue;
+							var users = obj.data.users;
+							var appellation = obj.data.appellation;
+							var state = obj.data.clueState;
+							var source = obj.data.source;
+
+							var html = "";
+							for (var i = 0; i < users.length; i++){
+								users[i].id == clue.owner ? html += '<option selected value='+users[i].id+'>'+users[i].name+'</option>' : html += '<option value='+users[i].id+'>'+users[i].name+'</option>';
+							}
+							$("#edit-clueOwner").html(html);
+
+							var html = "";
+							for (var i = 0; i < appellation.length; i++){
+								appellation[i].text == clue.appellation ? html += '<option selected value='+appellation[i].id+'>'+appellation[i].text+'</option>' : html += '<option value='+appellation[i].id+'>'+appellation[i].text+'</option>';
+							}
+							$("#edit-call").html(html);
+
+							var html = "";
+							for (var i = 0; i < state.length; i++){
+								state[i].text == clue.state ? html += '<option selected value='+state[i].id+'>'+state[i].text+'</option>' : html += '<option value='+state[i].id+'>'+state[i].text+'</option>';
+							}
+							$("#edit-status").html(html);
+
+							var html = "";
+							for (var i = 0; i < source.length; i++){
+								source[i].text == clue.source ? html += '<option selected value='+source[i].id+'>'+source[i].text+'</option>' : html += '<option value='+source[i].id+'>'+source[i].text+'</option>';
+							}
+							$("#edit-source").html(html);
+
+							$("#edit-id").val(clue.id);
+							$("#edit-company").val(clue.company);
+							$("#edit-surname").val(clue.fullname);
+							$("#edit-job").val(clue.job);
+							$("#edit-email").val(clue.email);
+							$("#edit-website").val(clue.website);
+							$("#edit-phone").val(clue.phone);
+							$("#edit-mphone").val(clue.mphone);
+							$("#edit-describe").val(clue.description);
+							$("#edit-contactSummary").val(clue.contactsummary);
+							$("#edit-nextContactTime").val(clue.nextcontacttime);
+							$("#edit-address").val(clue.address);
+
+						} else {
+							alert("查询失败");
+						}
+					}
+				});
+
+
+		});
+
+		//保存修改
+		$("#updateSave").click(function () {
+			$.ajax({
+				url:'/clue/update',
+				type:'post',
+				data:{
+					id:clueid,
+					company:$("#edit-company").val(),
+					fullname:$("#edit-surname").val(),
+					job:$("#edit-job").val(),
+					email:$("#edit-email").val(),
+					website:$("#edit-website").val(),
+					phone:$("#edit-phone").val(),
+					mphone:$("#edit-mphone").val(),
+					description:$("#edit-describe").val(),
+					contactsummary:$("#edit-contactSummary").val(),
+					nextcontacttime:$("#edit-nextContactTime").val(),
+					address:$("#edit-address").val(),
+					owner:$("#edit-clueOwner option:selected").val(),
+					appellation:$("#edit-call option:selected").text(),
+					state:$("#edit-status option:selected").text(),
+					source:$("#edit-source option:selected").text()
+				},
+				dataType:'json',
+				success:function (obj) {
+					if (obj.success){
+						getDetailById();
+						$("#editClueModal").modal("hide");
+					}else {
+						alert(obj.msg);
+					}
+				}
+
+			});
+		});
+
+		//保存备注
+		$("#remarkSave").click(function () {
+			var notecontent = $("#remark").val();
+			$.ajax({
+				url:'/clueRemark/add',
+				type:'post',
+				data:{
+					notecontent:notecontent,
+					clueid:clueid
+				},
+				dataType:'json',
+				success:function (obj) {
+					if (obj.success){
+						getAllRemark();
+						$("#remark").val("");
+					}else {
+						alert(obj.msg);
+					}
+				}
+
+			});
+		});
+
+		//保存备注修改
+		$("#updateRemarkBtn").click(function () {
+			$.ajax({
+				url:'/clueRemark/update',
+				type:'post',
+				data:{
+					id:$("#remarkId").val(),
+					notecontent:$("#noteContent").val()
+				},
+				dataType:'json',
+				success:function (obj) {
+					if (obj.success){
+						$("#editRemarkModal").modal("hide");
+						getAllRemark();
+					} else {
+						alert(obj.msg);
+					}
+				}
+			});
+		});
+
+		pageList(5, 1)
+
+		relation();
+
+
+		//打开关联市场活动模态框, 显示所有未关联的市场活动
+		$("#allRelation").click(function () {
+			$("#bundModal").modal("show");
+
+			relation();
+		});
+
+
+		//模糊查询
+		$("#searchActivity").blur(function () {
+			$("#searchActivityHid").val($("#searchActivity").val());
+			pageList(5,1);
+		});
+
+		//关联线索和市场活动
+		$("#addRelation").click(function () {
+			var $checks = $("input[name='checkOne']:checked");
+
+			if ($checks.size()==0){
+				alert("请选择要关联的市场活动");
+			} else {
+				var aids = new Array();
+				$.each($checks,function () {
+					aids.push($(this).val());
+				});
+				$.ajax({
+					url:'/caRelation/add',
+					type:'get',
+					data:{
+						aids:aids,
+						clueid:clueid
+					},
+					dataType:'json',
+					traditional:true,
+					success:function (obj) {
+						relation();
+						pageList(3,1);
+						$("#bundModal").modal("hide");
+						$("#checkAll").prop("checked",false);
+
+					}
+				});
+			}
+		});
+
+		//复选框全选判定
+		$("#checkAll").click(function () {
+			$("input[name='checkOne']").prop('checked',this.checked);
+		});
+
+		$("#ClueActRelation").on('click',function () {
+			$("#checkAll").prop("checked",$("input[name='checkOne']").length == $("input[name='checkOne']:checked").length)
+		});
+
+	});
+
+	//显示所有细节信息
+	function getDetailById() {
+		$.ajax({
+			url:'/clue/detail',
+			type:'get',
+			data:{id:clueid},
+			dataType:'json',
+			success:function (obj) {
+				if (obj.success){
+					var clue = obj.data;
+					//隐藏域
+					$("#hidFullName").val(clue.fullname);
+					$("#hidCompany").val(clue.company);
+
+					$("#titleFullName").text(clue.fullname);
+					$("#titleCompany").text(clue.company);
+
+					$("#detailFullName").text(clue.company);
+					$("#detailOwner").text(clue.owner);
+					$("#detailCompany").text(clue.company);
+					$("#detailJob").text(clue.job);
+					$("#detailEmail").text(clue.email);
+					$("#detailPhone").text(clue.phone);
+					$("#detailWebsite").text(clue.website);
+					$("#detailMphone").text(clue.mphone);
+					$("#detailState").text(clue.state);
+					$("#detailSource").text(clue.source);
+					$("#detailCreateBy").text(clue.createby);
+					$("#detailCreateTime").text(clue.createtime);
+					$("#detailEditBy").text(clue.editby);
+					$("#detailEditTime").text(clue.editby);
+					$("#detailDescription").text(clue.description);
+					$("#detailContactSummary").text(clue.contactsummary);
+					$("#detailNextContactTime").text(clue.nextcontacttime);
+					$("#detailAddress").text(clue.address);
+
+				}
+			}
+		});
+	}
+
+	//显示所有备注
+	function getAllRemark() {
+		$.ajax({
+			url:'/clueRemark/remarks',
+			type:'get',
+			data:{clueid:clueid},
+			dataType:'json',
+			success:function (obj) {
+				if (obj.success){
+					$("#allRemarks").html("");
+					var html = "";
+					var items = obj.data;
+					for (var i = 0; i < items.length; i++){
+						html += '<div id="'+ items[i].id +'" class="remarkDiv" style="height: 60px;">';
+						html += '<img title="'+(items[i].editflag==0 ? items[i].createby : items[i].editby)+'" src="../../image/user-thumbnail.png" style="width: 30px; height:30px;">';
+						html += '<div style="position: relative; top: -40px; left: 40px;" >';
+						html += '<h5>'+items[i].notecontent+'</h5>';
+						html += '<font color="gray">线索</font> <font color="gray">-</font> <b>'+$("#hidFullName").val()+'-'+$("#hidCompany").val()+'</b> <small style="color: gray;"> '+ (items[i].editflag==0 ? items[i].createtime : items[i].edittime) +' 由 '+(items[i].editflag==0 ? items[i].createby : items[i].editby)+'</small>';
+						html += '<div style="position: relative; left: 500px; top: -30px; height: 30px; width: 100px; display: none;">';
+						html += '<a class="myEditHref" onclick=\'editRemark(\"'+ items[i].id +'\")\' href="javascript:void(0);"><span class="glyphicon glyphicon-edit" style="font-size: 20px; color: #E6E6E6;"></span></a>';
+						html += '&nbsp;&nbsp;&nbsp;&nbsp;';
+						html += '<a class="myDelHref" onclick=\'delRemark(\"'+ items[i].id +'\")\' href="javascript:void(0);"><span class="glyphicon glyphicon-remove" style="font-size: 20px; color: #E6E6E6;"></span></a>';
+						html += '</div>';
+						html += '</div>';
+						html += '</div>';
+					}
+					$("#allRemarks").html(html);
+				}
+			}
+		});
+	}
+
+	//编辑备注
+	function editRemark(id) {
+		$.ajax({
+			url:'/clueRemark/edit',
+			type:'get',
+			data:{id:id},
+			dataType:'json',
+			success:function (obj) {
+				if (obj.success){
+					$("#noteContent").val(obj.data.notecontent);
+					$("#remarkId").val(obj.data.id);
+					$("#editRemarkModal").modal("show");
+				}else {
+					alert(obj.msg);
+				}
+			}
+		});
+
+
+	}
+
+	//删除备注
+	function delRemark(id) {
+		$.ajax({
+			url:'/clueRemark/del',
+			type:'get',
+			data:{id:id},
+			dataType:'json',
+			success:function (obj) {
+				if (obj.success){
+					$("#"+id).remove();
+				} else {
+					alert(obj.msg);
+				}
+			}
+
+		});
+	}
+
+	//查询所有未关联市场活动
+	function pageList(pageSize,pageNo) {
+		var activityName = $("#searchActivity").val($("#searchActivityHid").val());
+
+		$.ajax({
+			url:'/caRelation/findPage',
+			type:'get',
+			dataType:'json',
+			data:{
+				pageSize:pageSize,
+				pageNo:pageNo,
+				activityname:activityName.val(),
+				clueid:clueid
+			},
+			success:function (obj) {
+				if (obj.data != null){
+					var item = obj.data.rows;
+
+					var html = "";
+					for (var i=0; i < item.length; i++){
+						html += '<tr id="'+item[i].id+'">';
+						html += '<td><input name="checkOne" value="'+item[i].id+'" type="checkbox" /></td>';
+						html += '<td>'+item[i].name+'</td>';
+						html += '<td>'+item[i].startdate+'</td>';
+						html += '<td>'+item[i].enddate+'</td>';
+						html += '<td>'+item[i].owner+'</td>';
+						html += '</tr>';
+					}
+					$("#ClueActRelation").html("");
+					$("#ClueActRelation").html(html);
+
+					var total = obj.data.total;
+					var totalPage = total%pageSize == 0 ? total/pageSize : parseInt(total/pageSize) + 1;
+
+					$("#autoPage").bs_pagination({
+						currentPage:pageNo,//页码
+						rowsPerPage:pageSize,//每页显示的记录条数
+						maxRowsPerPage:20,//每页最多显示的记录条数
+						totalPages:totalPage,//总页数
+						totalRows:total,//总记录条数
+						visiblePageLinks:3,//显示几个卡片
+						showGoToPage:true,
+						showRowsPerPage:true,
+						showRowsInfo:true,
+						showRowsDefaultInfo:true,
+						onChangePage : function (even, obj) {
+							pageList(obj.rowsPerPage,obj.currentPage);
+						}
+
+					});
+
+				}else {
+					alert("无数据");
+				}
+
+			}
+		});
+	}
+
+	//查询所有关联的市场活动
+	function relation() {
+		$.ajax({
+			url:'/caRelation/relation',
+			type:'get',
+			data:{clueid:clueid},
+			dataType:'json',
+			success:function (obj) {
+				pageList(5, 1);
+				var items = obj.data;
+				if (items != null) {
+					var html = "";
+					$("#activities").html(html);
+					for (var i=0; i<items.length; i++){
+						html += '<tr id="'+items[i].caid+'">';
+						html += '<td>'+items[i].activity.name+'</td>';
+						html += '<td>'+items[i].activity.startdate+'</td>';
+						html += '<td>'+items[i].activity.enddate+'</td>';
+						html += '<td>'+items[i].activity.owner+'</td>';
+						html += '<td><a href="javascript:void(0);"  style="text-decoration: none;" onclick=\'delRelation(\"'+ items[i].caid +'\")\' ><span class="glyphicon glyphicon-remove"></span>解除关联</a></td>';
+						html += '</tr>';
+					}
+					$("#activities").html(html);
+				}else {
+
+				}
+
+			}
+		})
+
+	}
+
+	//删除关联市场活动
+	function delRelation(id){
+		$.ajax({
+			url:'/caRelation/del',
+			type:'get',
+			data:{id:id},
+			dataType:'json',
+			success:function (obj) {
+				$("#"+id).remove();
+			}
+		});
+	}
+
+
+	
+</script>
+
+</head>
+<body>
+	<input id="hidFullName" type="hidden"/>
+	<input id="hidCompany" type="hidden"/>
+
+	<!--修改备注的模态框-->
+	<div class="modal fade" id="editRemarkModal" role="dialog">
+		<%-- 备注的id --%>
+		<input type="hidden" id="remarkId">
+		<div class="modal-dialog" role="document" style="width: 40%;">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span aria-hidden="true">×</span>
+					</button>
+					<h4 class="modal-title" id="myEditModalLabel">修改备注</h4>
+				</div>
+				<div class="modal-body">
+					<form class="form-horizontal" role="form">
+						<div class="form-group">
+							<label for="edit-describe" class="col-sm-2 control-label">内容</label>
+							<div class="col-sm-10" style="width: 81%;">
+								<textarea class="form-control" rows="3" id="noteContent"></textarea>
+							</div>
+						</div>
+					</form>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+					<button type="button" class="btn btn-primary" id="updateRemarkBtn">更新</button>
+				</div>
+			</div>
+		</div>
+	</div>
+
+	<!-- 关联市场活动的模态窗口 -->
+	<div class="modal fade" id="bundModal" role="dialog">
+		<div class="modal-dialog" role="document" style="width: 80%;">
+			<div class="modal-content">
+				<div class="modal-header">
+					<button type="button" class="close" data-dismiss="modal">
+						<span aria-hidden="true">×</span>
+					</button>
+					<h4 class="modal-title">关联市场活动</h4>
+				</div>
+				<div class="modal-body">
+					<div class="btn-group" style="position: relative; top: 18%; left: 8px;">
+						<form class="form-inline" role="form">
+						  <div class="form-group has-feedback">
+						    <input id="searchActivity" type="text" class="form-control" style="width: 300px;" placeholder="请输入市场活动名称，支持模糊查询">
+						    <input id="searchActivityHid" type="hidden" />
+							  <span class="glyphicon glyphicon-search form-control-feedback"></span>
+						  </div>
+						</form>
+					</div>
+					<table id="activityTable" class="table table-hover" style="width: 900px; position: relative;top: 10px;">
+						<thead>
+							<tr style="color: #B3B3B3;">
+								<td><input id="checkAll" type="checkbox"/></td>
+								<td>名称</td>
+								<td>开始日期</td>
+								<td>结束日期</td>
+								<td>所有者</td>
+								<td></td>
+							</tr>
+						</thead>
+						<tbody id="ClueActRelation">
+
+						</tbody>
+					</table>
+				</div>
+				<!--分页-->
+				<div id="autoPage" style="height: 65px; position: relative;top:20px;">
+					<div>
+						<button type="button" class="btn btn-default" style="cursor: default;">共<b>50</b>条记录</button>
+					</div>
+					<div class="btn-group" style="position: relative;top: -34px; left: 110px;">
+						<button type="button" class="btn btn-default" style="cursor: default;">显示</button>
+						<div class="btn-group">
+							<button type="button" class="btn btn-default dropdown-toggle" data-toggle="dropdown">
+								10
+								<span class="caret"></span>
+							</button>
+							<ul class="dropdown-menu" role="menu">
+								<li><a href="#">20</a></li>
+								<li><a href="#">30</a></li>
+							</ul>
+						</div>
+						<button type="button" class="btn btn-default" style="cursor: default;">条/页</button>
+					</div>
+					<div style="position: relative;top: -88px; left: 250px;">
+						<nav>
+							<ul class="pagination">
+								<li class="disabled"><a href="#">首页</a></li>
+								<li class="disabled"><a href="#">上一页</a></li>
+								<li class="active"><a href="#">1</a></li>
+								<li><a href="#">2</a></li>
+								<li><a href="#">3</a></li>
+								<li><a href="#">4</a></li>
+								<li><a href="#">5</a></li>
+								<li><a href="#">下一页</a></li>
+								<li class="disabled"><a href="#">末页</a></li>
+							</ul>
+						</nav>
+					</div>
+				</div>
+				<div class="modal-footer">
+					<button type="button" class="btn btn-default" data-dismiss="modal">取消</button>
+					<button id="addRelation" type="button" class="btn btn-primary" >关联</button>
+				</div>
+
+			</div>
+
+		</div>
+	</div>
+
+    <!-- 修改线索的模态窗口 -->
+    <div class="modal fade" id="editClueModal" role="dialog">
+        <div class="modal-dialog" role="document" style="width: 90%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">修改线索</h4>
+                </div>
+                <div class="modal-body">
+                    <form class="form-horizontal" role="form">
+
+                        <div class="form-group">
+                            <label for="edit-clueOwner" class="col-sm-2 control-label">所有者<span style="font-size: 15px; color: red;">*</span></label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <select class="form-control" id="edit-clueOwner">
+                                    <option>zhangsan</option>
+                                    <option>lisi</option>
+                                    <option>wangwu</option>
+                                </select>
+                            </div>
+                            <label for="edit-company" class="col-sm-2 control-label">公司<span style="font-size: 15px; color: red;">*</span></label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <input type="text" class="form-control" id="edit-company" value="动力节点">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-call" class="col-sm-2 control-label">称呼</label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <select class="form-control" id="edit-call">
+                                    <!--<option></option>
+                                    <option selected>先生</option>
+                                    <option>夫人</option>
+                                    <option>女士</option>
+                                    <option>博士</option>
+                                    <option>教授</option>-->
+                                </select>
+                            </div>
+                            <label for="edit-surname" class="col-sm-2 control-label">姓名<span style="font-size: 15px; color: red;">*</span></label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <input type="text" class="form-control" id="edit-surname" value="">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-job" class="col-sm-2 control-label">职位</label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <input type="text" class="form-control" id="edit-job" value="">
+                            </div>
+                            <label for="edit-email" class="col-sm-2 control-label">邮箱</label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <input type="text" class="form-control" id="edit-email" value="">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-phone" class="col-sm-2 control-label">公司座机</label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <input type="text" class="form-control" id="edit-phone" value="">
+                            </div>
+                            <label for="edit-website" class="col-sm-2 control-label">公司网站</label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <input type="text" class="form-control" id="edit-website" value="">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-mphone" class="col-sm-2 control-label">手机</label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <input type="text" class="form-control" id="edit-mphone" value="">
+                            </div>
+                            <label for="edit-status" class="col-sm-2 control-label">线索状态</label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <select class="form-control" id="edit-status">
+                                    <!--<option></option>
+                                    <option>试图联系</option>
+                                    <option>将来联系</option>
+                                    <option selected>已联系</option>
+                                    <option>虚假线索</option>
+                                    <option>丢失线索</option>
+                                    <option>未联系</option>
+                                    <option>需要条件</option>-->
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-source" class="col-sm-2 control-label">线索来源</label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <select class="form-control" id="edit-source">
+                                    <!--<option></option>
+                                    <option selected>广告</option>
+                                    <option>推销电话</option>
+                                    <option>员工介绍</option>
+                                    <option>外部介绍</option>
+                                    <option>在线商场</option>
+                                    <option>合作伙伴</option>
+                                    <option>公开媒介</option>
+                                    <option>销售邮件</option>
+                                    <option>合作伙伴研讨会</option>
+                                    <option>内部研讨会</option>
+                                    <option>交易会</option>
+                                    <option>web下载</option>
+                                    <option>web调研</option>
+                                    <option>聊天</option>-->
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-describe" class="col-sm-2 control-label">描述</label>
+                            <div class="col-sm-10" style="width: 81%;">
+                                <textarea class="form-control" rows="3" id="edit-describe"></textarea>
+                            </div>
+                        </div>
+
+                        <div style="height: 1px; width: 103%; background-color: #D5D5D5; left: -13px; position: relative;"></div>
+
+                        <div style="position: relative;top: 15px;">
+                            <div class="form-group">
+                                <label for="edit-contactSummary" class="col-sm-2 control-label">联系纪要</label>
+                                <div class="col-sm-10" style="width: 81%;">
+                                    <textarea class="form-control" rows="3" id="edit-contactSummary"></textarea>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label for="edit-nextContactTime" class="col-sm-2 control-label">下次联系时间</label>
+                                <div class="col-sm-10" style="width: 300px;">
+                                    <input type="text" class="form-control time" id="edit-nextContactTime" value="">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div style="height: 1px; width: 103%; background-color: #D5D5D5; left: -13px; position: relative; top : 10px;"></div>
+
+                        <div style="position: relative;top: 20px;">
+                            <div class="form-group">
+                                <label for="edit-address" class="col-sm-2 control-label">详细地址</label>
+                                <div class="col-sm-10" style="width: 81%;">
+                                    <textarea class="form-control" rows="1" id="edit-address"></textarea>
+                                </div>
+                            </div>
+                        </div>
+                    </form>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                    <button id="updateSave" type="button" class="btn btn-primary" >更新</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+	<!-- 返回按钮 -->
+	<div style="position: relative; top: 35px; left: 10px;">
+		<a href="javascript:void(0);" onclick="window.history.back();"><span class="glyphicon glyphicon-arrow-left" style="font-size: 20px; color: #DDDDDD"></span></a>
+	</div>
+	
+	<!-- 大标题 -->
+	<div style="position: relative; left: 40px; top: -30px;">
+		<div class="page-header">
+			<h3><span id="titleFullName"></span>  <small><span id="titleCompany"></span></small></h3>
+		</div>
+		<div style="position: relative; height: 50px; width: 500px;  top: -72px; left: 700px;">
+			<button type="button" class="btn btn-default" onclick="window.location.href='convert.html?id='+clueid+'';"><span class="glyphicon glyphicon-retweet"></span> 转换</button>
+			<button id="updateClue" type="button" class="btn btn-default" data-toggle="modal"><span class="glyphicon glyphicon-edit"></span> 编辑</button>
+			<button  id="deleteClue" type="button" class="btn btn-danger"><span class="glyphicon glyphicon-minus"></span> 删除</button>
+		</div>
+	</div>
+	
+	<!-- 详细信息 -->
+	<div style="position: relative; top: -70px;">
+		<div style="position: relative; left: 40px; height: 30px;">
+			<div style="width: 300px; color: gray;">名称</div>
+			<div style="width: 300px;position: relative; left: 200px; top: -20px;"><b id="detailFullName"></b></div>
+			<div style="width: 300px;position: relative; left: 450px; top: -40px; color: gray;">所有者</div>
+			<div style="width: 300px;position: relative; left: 650px; top: -60px;"><b id="detailOwner"></b></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px;"></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px; left: 450px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 10px;">
+			<div style="width: 300px; color: gray;">公司</div>
+			<div style="width: 300px;position: relative; left: 200px; top: -20px;"><b id="detailCompany"></b></div>
+			<div style="width: 300px;position: relative; left: 450px; top: -40px; color: gray;">职位</div>
+			<div style="width: 300px;position: relative; left: 650px; top: -60px;"><b id="detailJob"></b></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px;"></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px; left: 450px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 20px;">
+			<div style="width: 300px; color: gray;">邮箱</div>
+			<div style="width: 300px;position: relative; left: 200px; top: -20px;"><b id="detailEmail"></b></div>
+			<div style="width: 300px;position: relative; left: 450px; top: -40px; color: gray;">公司座机</div>
+			<div style="width: 300px;position: relative; left: 650px; top: -60px;"><b id="detailPhone"></b></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px;"></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px; left: 450px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 30px;">
+			<div style="width: 300px; color: gray;">公司网站</div>
+			<div style="width: 300px;position: relative; left: 200px; top: -20px;"><b id="detailWebsite"></b></div>
+			<div style="width: 300px;position: relative; left: 450px; top: -40px; color: gray;">手机</div>
+			<div style="width: 300px;position: relative; left: 650px; top: -60px;"><b id="detailMphone"></b></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px;"></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px; left: 450px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 40px;">
+			<div style="width: 300px; color: gray;">线索状态</div>
+			<div style="width: 300px;position: relative; left: 200px; top: -20px;"><b id="detailState"></b></div>
+			<div style="width: 300px;position: relative; left: 450px; top: -40px; color: gray;">线索来源</div>
+			<div style="width: 300px;position: relative; left: 650px; top: -60px;"><b id="detailSource"></b></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px;"></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px; left: 450px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 50px;">
+			<div style="width: 300px; color: gray;">创建者</div>
+			<div style="width: 500px;position: relative; left: 200px; top: -20px;"><b id="detailCreateBy"></b>&nbsp;&nbsp;<small id="detailCreateTime" style="font-size: 10px; color: gray;"></small></div>
+			<div style="height: 1px; width: 550px; background: #D5D5D5; position: relative; top: -20px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 60px;">
+			<div style="width: 300px; color: gray;">修改者</div>
+			<div style="width: 500px;position: relative; left: 200px; top: -20px;"><b id="detailEditBy"></b>&nbsp;&nbsp;<small id="detailEditTime" style="font-size: 10px; color: gray;"></small></div>
+			<div style="height: 1px; width: 550px; background: #D5D5D5; position: relative; top: -20px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 70px;">
+			<div style="width: 300px; color: gray;">描述</div>
+			<div style="width: 630px;position: relative; left: 200px; top: -20px;">
+				<b id="detailDescription">
+				</b>
+			</div>
+			<div style="height: 1px; width: 850px; background: #D5D5D5; position: relative; top: -20px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 80px;">
+			<div style="width: 300px; color: gray;">联系纪要</div>
+			<div style="width: 630px;position: relative; left: 200px; top: -20px;">
+				<b id="detailContactSummary">
+				</b>
+			</div>
+			<div style="height: 1px; width: 850px; background: #D5D5D5; position: relative; top: -20px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 90px;">
+			<div style="width: 300px; color: gray;">下次联系时间</div>
+			<div style="width: 300px;position: relative; left: 200px; top: -20px;"><b id="detailNextContactTime"></b></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -20px; "></div>
+		</div>
+        <div style="position: relative; left: 40px; height: 30px; top: 100px;">
+            <div style="width: 300px; color: gray;">详细地址</div>
+            <div style="width: 630px;position: relative; left: 200px; top: -20px;">
+                <b id="detailAddress">
+                </b>
+            </div>
+            <div style="height: 1px; width: 850px; background: #D5D5D5; position: relative; top: -20px;"></div>
+        </div>
+	</div>
+	
+	<!-- 备注 -->
+	<div style="position: relative; top: 40px; left: 40px;">
+		<div class="page-header">
+			<h4>备注</h4>
+		</div>
+		<div id="allRemarks">
+
+		</div>
+		
+
+		
+		<!-- 备注2 -->
+		<!--<div class="remarkDiv" style="height: 60px;">
+			<img title="zhangsan" src="../../image/user-thumbnail.png" style="width: 30px; height:30px;">
+			<div style="position: relative; top: -40px; left: 40px;" >
+				<h5>呵呵！</h5>
+				<font color="gray">线索</font> <font color="gray">-</font> <b>李四先生-动力节点</b> <small style="color: gray;"> 2017-01-22 10:20:10 由zhangsan</small>
+				<div style="position: relative; left: 500px; top: -30px; height: 30px; width: 100px; display: none;">
+					<a class="myHref" href="javascript:void(0);"><span class="glyphicon glyphicon-edit" style="font-size: 20px; color: #E6E6E6;"></span></a>
+					&nbsp;&nbsp;&nbsp;&nbsp;
+					<a class="myHref" href="javascript:void(0);"><span class="glyphicon glyphicon-remove" style="font-size: 20px; color: #E6E6E6;"></span></a>
+				</div>
+			</div>
+		</div>-->
+		
+		<div id="remarkDiv" style="background-color: #E6E6E6; width: 870px; height: 90px;">
+			<form role="form" style="position: relative;top: 10px; left: 10px;">
+				<textarea id="remark" class="form-control" style="width: 850px; resize : none;" rows="2"  placeholder="添加备注..."></textarea>
+				<p id="cancelAndSaveBtn" style="position: relative;left: 737px; top: 10px; display: none;">
+					<button id="cancelBtn" type="button" class="btn btn-default">取消</button>
+					<button id="remarkSave" type="button" class="btn btn-primary">保存</button>
+				</p>
+			</form>
+		</div>
+	</div>
+	
+	<!-- 市场活动 -->
+	<div>
+		<div style="position: relative; top: 60px; left: 40px;">
+			<div class="page-header">
+				<h4>市场活动</h4>
+			</div>
+			<div style="position: relative;top: 0px;">
+				<table class="table table-hover" style="width: 900px;">
+					<thead>
+						<tr style="color: #B3B3B3;">
+							<td>名称</td>
+							<td>开始日期</td>
+							<td>结束日期</td>
+							<td>所有者</td>
+							<td></td>
+						</tr>
+					</thead>
+					<tbody id="activities">
+
+					</tbody>
+				</table>
+
+			</div>
+			
+			<div>
+				<a  id="allRelation" href="javascript:void(0);"  style="text-decoration: none;"><span class="glyphicon glyphicon-plus"></span>关联市场活动</a>
+			</div>
+
+		</div>
+	</div>
+
+
+	
+	
+	<div style="height: 200px;"></div>
+</body>
+</html>

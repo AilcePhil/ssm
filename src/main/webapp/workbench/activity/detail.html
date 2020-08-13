@@ -1,0 +1,525 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+
+<link href="../../jquery/bootstrap_3.3.0/css/bootstrap.min.css" type="text/css" rel="stylesheet" />
+<script type="text/javascript" src="../../jquery/jquery-1.11.1-min.js"></script>
+<script type="text/javascript" src="../../jquery/bootstrap_3.3.0/js/bootstrap.min.js"></script>
+
+<script type="text/javascript">
+
+
+	//默认情况下取消和保存按钮是隐藏的
+	var cancelAndSaveBtnDefault = true;
+
+	//获取页面的地址
+	var address = window.location.search;
+	var activityid = decodeURI(address.substring(address.indexOf("=") + 1));
+	
+	$(function(){
+		$("#remark").focus(function(){
+			if(cancelAndSaveBtnDefault){
+				//设置remarkDiv的高度为130px
+				$("#remarkDiv").css("height","130px");
+				//显示
+				$("#cancelAndSaveBtn").show("2000");
+				cancelAndSaveBtnDefault = false;
+			}
+		});
+		
+		$("#cancelBtn").click(function(){
+			//显示
+			$("#cancelAndSaveBtn").hide();
+			//设置remarkDiv的高度为130px
+			$("#remarkDiv").css("height","90px");
+			$("#remark").val("");
+			cancelAndSaveBtnDefault = true;
+
+		});
+		
+/*		$(".remarkDiv").mouseover(function(){
+			$(this).children("div").children("div").show();
+		});
+		$(".remarkDiv").mouseout(function(){
+			$(this).children("div").children("div").hide();
+		});
+		$(".myHref").mouseover(function(){
+			$(this).children("span").css("color","red");
+		});
+		$(".myHref").mouseout(function(){
+			$(this).children("span").css("color","#E6E6E6");
+		});*/
+
+		$("#allRemarks").on("mouseover",".remarkDiv",function () {
+			$(this).children("div").children("div").show();
+		});
+
+		$("#allRemarks").on("mouseout",".remarkDiv",function () {
+			$(this).children("div").children("div").hide();
+		});
+		$("#allRemarks").on("mouseover",".myDelHref",function () {
+			$(this).children("span").css("color","red");
+		});
+
+		$("#allRemarks").on("mouseout",".myDelHref",function () {
+			$(this).children("span").css("color","#E6E6E6");
+		});
+		$("#allRemarks").on("mouseover",".myEditHref",function () {
+			$(this).children("span").css("color","blue");
+		});
+
+		$("#allRemarks").on("mouseout",".myEditHref",function () {
+			$(this).children("span").css("color","#E6E6E6");
+		});
+
+
+        //显示页面所有详细信息
+		getDetailById();
+
+		//显示编辑模态框及下拉选
+		$("#editActivity").click(function () {
+			$.ajax({
+				url:'/activity/id',
+				type:'get',
+				data:{id:activityid},
+				dataType:'json',
+				success:function (obj) {
+					if (obj.success){
+						var allUser = obj.data.allUser;
+						var activity = obj.data.tblActivity;
+						var html = "";
+						for (var i = 0; i < allUser.length; i++){
+							html += "<option value="+allUser[i].id+">"+allUser[i].name+"</option>"
+						}
+						$("#edit-marketActivityOwner").html(html);
+						$("#edit-id").val(activity.id);
+						$("#edit-marketActivityName").val(activity.name);
+						$("#edit-startTime").val(activity.startdate);
+						$("#edit-endTime").val(activity.enddate);
+						$("#edit-cost").val(activity.cost);
+						$("#edit-describe").val(activity.description);
+					} else {
+						alert("查询失败");
+					}
+
+				}
+			});
+			$("#editActivityModal").modal("show");
+		});
+
+		//保存修改信息
+		$("#updateSave").click(function () {
+				$.ajax({
+					url:'/activity/update',
+					type:'post',
+					data:{
+						id:$("#edit-id").val(),
+						owner:$("#edit-marketActivityOwner option:selected").val(),
+						name:$("#edit-marketActivityName").val(),
+						startdate:$("#edit-startTime").val(),
+						enddate:$("#edit-endTime").val(),
+						cost:$("#edit-cost").val(),
+						description:$("#edit-describe").val()
+					},
+					dataType:'json',
+					success:function (obj) {
+						if (obj.success){
+							$("#editActivityModal").modal("hide");
+							getDetailById();
+						}else {
+							alert(obj.msg);
+						}
+					}
+
+				});
+			});
+
+		//删除当前信息
+		$("#deleteActivity").click(function () {
+			var ids = new Array();
+			ids.push(activityid);
+			$.ajax({
+				url:'/activity/del',
+				type:'get',
+				data:{ids:ids},
+				dataType:'json',
+				traditional:true,
+				success:function (obj) {
+					if (obj.success){
+						window.location.href="/workbench/activity/index.html";
+					}else{
+						alert(obj.msg);
+					}
+
+				}
+			});
+		});
+
+		//查询所有备注
+		getAllRemark();
+
+		//保存备注
+		$("#remakeSave").click(function () {
+			var notecontent = $("#remark").val();
+			$.ajax({
+				url:'/remark/add',
+				type:'post',
+				data:{
+					notecontent:notecontent,
+					activityid:activityid
+				},
+				dataType:'json',
+				success:function (obj) {
+					if (obj.success){
+						getAllRemark();
+                        $("#remark").val("");
+					}else {
+						alert(obj.msg);
+					}
+				}
+
+			});
+		});
+
+		//保存备注修改信息
+        $("#updateRemarkBtn").click(function () {
+
+            $.ajax({
+               url:'/remark/save',
+               type:'post',
+               data:{
+                  id:$("#remarkId").val(),
+                  notecontent:$("#noteContent").val()
+               },
+               dataType:'json',
+               success:function (obj) {
+                   if (obj.success){
+                       $("#editRemarkModal").modal("hide");
+                       getAllRemark();
+                   } else {
+                       alert(obj.msg);
+                   }
+               }
+           });
+
+        });
+
+	});
+
+	//显示页面所有详细信息
+	function getDetailById() {
+		$.ajax({
+			url:'/activity/detail',
+			type:'get',
+			data:{id:activityid},
+			dataType:'json',
+			success:function (obj) {
+				if (obj.success){
+					var activity = obj.data;
+					//首行标签
+					$("#titleAvtName").text(activity.name);
+					$("#titleStartTime").text(activity.startdate);
+					$("#titleEndTime").text(activity.enddate);
+					//详细信息显示
+					$("#detailOwner").text(activity.owner);
+					$("#detailName").text(activity.name);
+					$("#detailStartTime").text(activity.startdate);
+					$("#detailEndTime").text(activity.enddate);
+					$("#detailCost").text(activity.cost);
+					$("#detailCreateBy").text(activity.createby);
+					$("#detailCreateTime").text(activity.createtime);
+					$("#detailEditBy").text(activity.editby);
+					$("#detailEditTime").text(activity.edittime);
+					$("#detailDescription").text(activity.description);
+
+				}
+			}
+
+		});
+	}
+
+	//显示所有备注
+	function getAllRemark() {
+		$.ajax({
+			url:'/remark/remarks',
+			type:'get',
+			data:{activityId:activityid},
+			dataType:'json',
+			success:function (obj) {
+				if (obj.success){
+					$("#allRemarks").html("");
+					var html = "";
+					var items = obj.data.remarkList;
+					var activity = obj.data.tblActivity;
+					for (var i = 0; i < items.length; i++){
+						html += '<div id="'+ items[i].id +'" class="remarkDiv" style="height: 60px;">';
+						html += '<img title="'+(items[i].editflag==0 ? items[i].createby : items[i].editby)+'" src="../../image/user-thumbnail.png" style="width: 30px; height:30px;">';
+						html += '<div style="position: relative; top: -40px; left: 40px;" >';
+						html += '<h5>'+items[i].notecontent+'</h5>';
+						html += '<font color="gray">市场活动</font> <font color="gray">-</font> <b>'+activity.name+'</b> <small style="color: gray;"> '+ (items[i].editflag==0 ? items[i].createtime : items[i].edittime) +' 由 '+(items[i].editflag==0 ? items[i].createby : items[i].editby)+'</small>';
+						html += '<div style="position: relative; left: 500px; top: -30px; height: 30px; width: 100px; display: none;">';
+						html += '<a class="myEditHref" onclick=\'editRemark(\"'+ items[i].id +'\")\' href="javascript:void(0);"><span class="glyphicon glyphicon-edit" style="font-size: 20px; color: #E6E6E6;"></span></a>';
+						html += '&nbsp;&nbsp;&nbsp;&nbsp;';
+						html += '<a class="myDelHref" onclick=\'delRemark(\"'+ items[i].id +'\")\' href="javascript:void(0);"><span class="glyphicon glyphicon-remove" style="font-size: 20px; color: #E6E6E6;"></span></a>';
+						html += '</div>';
+						html += '</div>';
+						html += '</div>';
+					}
+					$("#allRemarks").html(html);
+				}
+			}
+		});
+	}
+
+	//编辑备注信息
+	function editRemark(id) {
+	    $.ajax({
+           url:'/remark/edit',
+           type:'get',
+           data:{id:id},
+           dataType:'json',
+           success:function (obj) {
+                if (obj.success){
+                    $("#noteContent").val(obj.data.notecontent);
+                    $("#remarkId").val(obj.data.id);
+                    $("#editRemarkModal").modal("show");
+                }else {
+                    alert(obj.msg);
+                }
+           }
+        });
+
+
+	}
+
+	//删除备注信息
+	function delRemark(id) {
+		$.ajax({
+            url:'/remark/del',
+            type:'get',
+            data:{id:id},
+            dataType:'json',
+            success:function (obj) {
+                if (obj.success){
+                    $("#"+id).remove();
+                } else {
+                    alert(obj.msg);
+                }
+            }
+
+        });
+	}
+
+
+	
+</script>
+
+</head>
+<body>
+
+	<!-- 修改市场活动备注的模态窗口 -->
+	<div class="modal fade" id="editRemarkModal" role="dialog">
+		<%-- 备注的id --%>
+		<input type="hidden" id="remarkId">
+        <div class="modal-dialog" role="document" style="width: 40%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                    <h4 class="modal-title" id="myEditModalLabel">修改备注</h4>
+                </div>
+                <div class="modal-body">
+                    <form class="form-horizontal" role="form">
+                        <div class="form-group">
+                            <label for="edit-describe" class="col-sm-2 control-label">内容</label>
+                            <div class="col-sm-10" style="width: 81%;">
+                                <textarea class="form-control" rows="3" id="noteContent"></textarea>
+                            </div>
+                        </div>
+                    </form>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                    <button type="button" class="btn btn-primary" id="updateRemarkBtn">更新</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 修改市场活动的模态窗口 -->
+    <div class="modal fade" id="editActivityModal" role="dialog">
+        <div class="modal-dialog" role="document" style="width: 85%;">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <button type="button" class="close" data-dismiss="modal">
+                        <span aria-hidden="true">×</span>
+                    </button>
+                    <h4 class="modal-title" id="myModalLabel">修改市场活动</h4>
+                </div>
+                <div class="modal-body">
+
+                    <form class="form-horizontal" role="form">
+						<!--隐藏标签，存放activity的id-->
+						<input id="edit-id" hidden="hidden" value=""/>
+                        <div class="form-group">
+                            <label for="edit-marketActivityOwner" class="col-sm-2 control-label">所有者<span style="font-size: 15px; color: red;">*</span></label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <select class="form-control" id="edit-marketActivityOwner">
+                                    <!--<option>zhangsan</option>
+                                    <option>lisi</option>
+                                    <option>wangwu</option>-->
+                                </select>
+                            </div>
+                            <label for="edit-marketActivityName" class="col-sm-2 control-label">名称<span style="font-size: 15px; color: red;">*</span></label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <input type="text" class="form-control" id="edit-marketActivityName" value="发传单">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-startTime" class="col-sm-2 control-label">开始日期</label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <input type="text" class="form-control" id="edit-startTime" value="2020-10-10">
+                            </div>
+                            <label for="edit-endTime" class="col-sm-2 control-label">结束日期</label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <input type="text" class="form-control" id="edit-endTime" value="2020-10-20">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-cost" class="col-sm-2 control-label">成本</label>
+                            <div class="col-sm-10" style="width: 300px;">
+                                <input type="text" class="form-control" id="edit-cost" value="5,000">
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="edit-describe" class="col-sm-2 control-label">描述</label>
+                            <div class="col-sm-10" style="width: 81%;">
+                                <textarea class="form-control" rows="3" id="edit-describe"></textarea>
+                            </div>
+                        </div>
+
+                    </form>
+
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-default" data-dismiss="modal">关闭</button>
+                    <button id="updateSave" type="button" class="btn btn-primary">更新</button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+	<!-- 返回按钮 -->
+	<div style="position: relative; top: 35px; left: 10px;">
+		<a href="javascript:void(0);" onclick="window.history.back();"><span class="glyphicon glyphicon-arrow-left" style="font-size: 20px; color: #DDDDDD"></span></a>
+	</div>
+	
+	<!-- 大标题 -->
+	<div style="position: relative; left: 40px; top: -30px;">
+		<div class="page-header">
+			<h3>市场活动-<span id="titleAvtName"></span> <small><span id="titleStartTime"></span> ~ <span id="titleEndTime"></span></small></h3>
+		</div>
+		<div style="position: relative; height: 50px; width: 250px;  top: -72px; left: 700px;">
+			<button id="editActivity" type="button" class="btn btn-default" data-toggle="modal"><span class="glyphicon glyphicon-edit"></span> 编辑</button>
+			<button id="deleteActivity" type="button" class="btn btn-danger"><span class="glyphicon glyphicon-minus"></span> 删除</button>
+		</div>
+	</div>
+	
+	<!-- 详细信息 -->
+	<div style="position: relative; top: -70px;">
+		<div style="position: relative; left: 40px; height: 30px;">
+			<div style="width: 300px; color: gray;">所有者</div>
+			<div style="width: 300px;position: relative; left: 200px; top: -20px;"><b id="detailOwner"></b></div>
+			<div style="width: 300px;position: relative; left: 450px; top: -40px; color: gray;">名称</div>
+			<div style="width: 300px;position: relative; left: 650px; top: -60px;"><b id="detailName"></b></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px;"></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px; left: 450px;"></div>
+		</div>
+
+		<div style="position: relative; left: 40px; height: 30px; top: 10px;">
+			<div style="width: 300px; color: gray;">开始日期</div>
+			<div style="width: 300px;position: relative; left: 200px; top: -20px;"><b id="detailStartTime"></b></div>
+			<div style="width: 300px;position: relative; left: 450px; top: -40px; color: gray;">结束日期</div>
+			<div style="width: 300px;position: relative; left: 650px; top: -60px;"><b id="detailEndTime"></b></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px;"></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -60px; left: 450px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 20px;">
+			<div style="width: 300px; color: gray;">成本</div>
+			<div style="width: 300px;position: relative; left: 200px; top: -20px;"><b id="detailCost"></b></div>
+			<div style="height: 1px; width: 400px; background: #D5D5D5; position: relative; top: -20px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 30px;">
+			<div style="width: 300px; color: gray;">创建者</div>
+			<div style="width: 500px;position: relative; left: 200px; top: -20px;"><b id="detailCreateBy"></b>&nbsp;&nbsp;<small id="detailCreateTime" style="font-size: 10px; color: gray;"></small></div>
+			<div style="height: 1px; width: 550px; background: #D5D5D5; position: relative; top: -20px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 40px;">
+			<div style="width: 300px; color: gray;">修改者</div>
+			<div style="width: 500px;position: relative; left: 200px; top: -20px;"><b id="detailEditBy"></b>&nbsp;&nbsp;<small id="detailEditTime" style="font-size: 10px; color: gray;"></small></div>
+			<div style="height: 1px; width: 550px; background: #D5D5D5; position: relative; top: -20px;"></div>
+		</div>
+		<div style="position: relative; left: 40px; height: 30px; top: 50px;">
+			<div style="width: 300px; color: gray;">描述</div>
+			<div style="width: 630px;position: relative; left: 200px; top: -20px;">
+				<b id="detailDescription"></b>
+			</div>
+			<div style="height: 1px; width: 850px; background: #D5D5D5; position: relative; top: -20px;"></div>
+		</div>
+	</div>
+	
+	<!-- 备注 -->
+	<div  style="position: relative; top: 30px; left: 40px;">
+		<div class="page-header">
+			<h4>备注</h4>
+		</div>
+		<div id="allRemarks">
+
+		</div>
+		
+		<!-- 备注1 -->
+	<!--	<div class="remarkDiv" style="height: 60px;">
+			<img title="zhangsan" src="../../image/user-thumbnail.png" style="width: 30px; height:30px;">
+			<div style="position: relative; top: -40px; left: 40px;" >
+				<h5>哎呦！</h5>
+				<font color="gray">市场活动</font> <font color="gray">-</font> <b>发传单</b> <small style="color: gray;"> 2017-01-22 10:10:10 由zhangsan</small>
+				<div style="position: relative; left: 500px; top: -30px; height: 30px; width: 100px; display: none;">
+					<a class="myHref" href="javascript:void(0);"><span class="glyphicon glyphicon-edit" style="font-size: 20px; color: #E6E6E6;"></span></a>
+					&nbsp;&nbsp;&nbsp;&nbsp;
+					<a class="myHref" href="javascript:void(0);"><span class="glyphicon glyphicon-remove" style="font-size: 20px; color: #E6E6E6;"></span></a>
+				</div>
+			</div>
+		</div>-->
+		
+		<!-- 备注2 -->
+	<!--	<div class="remarkDiv" style="height: 60px;">
+			<img title="zhangsan" src="../../image/user-thumbnail.png" style="width: 30px; height:30px;">
+			<div style="position: relative; top: -40px; left: 40px;" >
+				<h5>呵呵！</h5>
+				<font color="gray">市场活动</font> <font color="gray">-</font> <b>发传单</b> <small style="color: gray;"> 2017-01-22 10:20:10 由zhangsan</small>
+				<div style="position: relative; left: 500px; top: -30px; height: 30px; width: 100px; display: none;">
+					<a class="myHref" href="javascript:void(0);"><span class="glyphicon glyphicon-edit" style="font-size: 20px; color: #E6E6E6;"></span></a>
+					&nbsp;&nbsp;&nbsp;&nbsp;
+					<a class="myHref" href="javascript:void(0);"><span class="glyphicon glyphicon-remove" style="font-size: 20px; color: #E6E6E6;"></span></a>
+				</div>
+			</div>
+		</div>-->
+		
+		<div id="remarkDiv" style="background-color: #E6E6E6; width: 870px; height: 90px;">
+			<form role="form" style="position: relative;top: 10px; left: 10px;">
+				<textarea id="remark" class="form-control" style="width: 850px; resize : none;" rows="2"  placeholder="添加备注..."></textarea>
+				<p id="cancelAndSaveBtn" style="position: relative;left: 737px; top: 10px; display: none;">
+					<button id="cancelBtn" type="button" class="btn btn-default">取消</button>
+					<button id="remakeSave" type="button" class="btn btn-primary">保存</button>
+				</p>
+			</form>
+		</div>
+	</div>
+	<div style="height: 200px;"></div>
+</body>
+</html>
